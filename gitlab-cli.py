@@ -1,13 +1,24 @@
+#!/usr/bin/env python
+
 from typing import Dict, Any
+from pathlib import Path
 import gitlab
 import re
 import subprocess
 import argparse
+import json
+from subprocess import run
+import sys
+import tempfile
+import os
 from xdg.BaseDirectory import xdg_config_home
+from terminaltables import AsciiTable
 
 parser = argparse.ArgumentParser(description='Simple gitlab interface')
 parser.add_argument(
     '--new-issue', type=str, help='create a new issue with a specific title')
+parser.add_argument(
+    '--list-issues', action='store_true', help='list project issues')
 parser.add_argument(
     '--close-issues',
     type=str,
@@ -16,6 +27,10 @@ parser.add_argument(
     '--labels',
     type=str,
     help='comma-separated list of labels to use for the issue')
+parser.add_argument(
+    '--editor',
+    action='store_true',
+    help='invoke $EDITOR and ask for a long description')
 
 parser.add_argument('--assign', type=str, help='assignee for the issue')
 
@@ -35,6 +50,25 @@ gl = gitlab.Gitlab(
 
 project = gl.projects.get(config["project"])
 
+
+def retrieve_message() -> str:
+    initial_message = ""
+
+    EDITOR = os.environ.get('EDITOR', 'vim')
+
+    with tempfile.NamedTemporaryFile(suffix=".tmp") as tf:
+        tf.write(initial_message.encode('utf-8'))
+        tf.flush()
+        run(
+            EDITOR + " " + tf.name,
+            shell=True,
+            check=True,
+        )
+
+    tf.seek(0)
+    return tf.read().decode('utf-8')
+
+
 if args.new_issue is not None:
     d = {
         'title': args.new_issue,
@@ -45,6 +79,17 @@ if args.new_issue is not None:
         user = next((u.id for u in project.users.list()
                      if u.name == args.assign), None)
         d['assignee_id'] = user
+    if args.editor is not None:
+        try:
+            message = retrieve_message()
+        except:
+            print("Abort, process error")
+            sys.exit(1)
+        if message == '':
+            print("Abort, empty message")
+            sys.exit(1)
+        else:
+            d['description'] = message
     created = project.issues.create(d)
     print("Created #" + str(created.iid))
 
@@ -56,3 +101,20 @@ if args.close_issues is not None:
         issue.save()
 
     print("all closed")
+
+if args.list_issues is not None:
+    list_args = {
+        'state': 'opened',
+        'per_page': '100',
+    }
+    if args.assign is not None:
+        list_args['assignee_id'] = next((u.id for u in project.users.list()
+                                         if u.name == args.assign), None)
+    if args.labels is not None:
+        list_args['labels'] = args.labels.split(',')
+    header = ["IID", "Title", "Tags"]
+    rows = [[
+        str(issue.iid), issue.title, ''
+        if not issue.labels else ' '.join(issue.labels)
+    ] for issue in project.issues.list(**list_args)]
+    print(AsciiTable([header] + rows).table)

@@ -42,6 +42,7 @@ in
 
     propagatedBuildInputs = [
       pythonPkgs.python-gitlab
+      pythonPkgs.terminaltables
       pythonPkgs.pyxdg
     ];
 
