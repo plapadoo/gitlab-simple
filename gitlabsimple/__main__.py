@@ -1,16 +1,15 @@
 #!/usr/bin/env python
 
 from typing import Dict, Any
+from traceback import print_exc
 from pathlib import Path
-import gitlab
-import re
-import subprocess
 import argparse
 import json
 from subprocess import run
 import sys
 import tempfile
 import os
+import gitlab
 from xdg.BaseDirectory import xdg_config_home
 from terminaltables import AsciiTable
 
@@ -28,9 +27,8 @@ def retrieve_message() -> str:
             shell=True,
             check=True,
         )
-
-    tf.seek(0)
-    return tf.read().decode('utf-8')
+        tf.seek(0)
+        return tf.read().decode('utf-8')
 
 
 parser = argparse.ArgumentParser(description='Simple gitlab interface')
@@ -93,6 +91,7 @@ if args.new_issue is not None:
             message = retrieve_message()
         except:
             print("Abort, process error")
+            print_exc()
             sys.exit(1)
         if message == '':
             print("Abort, empty message")

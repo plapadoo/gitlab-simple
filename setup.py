@@ -9,7 +9,7 @@ setup(
     classifiers=[
         'Programming Language :: Python :: 3',
     ],
-    scripts=['gitlab-cli.py'],
+    console_scripts=['gitlab-cli=gitlabcli.__main__:main'],
     keywords='gitlab',
     url='https://github.com/plapadoo/gitlab-simple',
     author='plapadoo',
