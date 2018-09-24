@@ -40,7 +40,16 @@ def retrieve_message() -> str:
 parser = argparse.ArgumentParser(description='Simple gitlab interface')
 parser.add_argument(
     '--new-issue', type=str, help='create a new issue with a specific title')
-parser.add_argument('--view-issue', type=int, help='ID of the issue to view')
+parser.add_argument(
+    '--issue', type=int, help='issue ID (other commands refer to that)')
+parser.add_argument(
+    '--view-issue', action='store_true', help='view issue with id')
+parser.add_argument(
+    '--comment-issue', type=str, help='add a short comment to an issue')
+parser.add_argument(
+    '--long-comment-issue',
+    action='store_true',
+    help='add a long comment to an issue (opens editor)')
 parser.add_argument('--project', type=int, help='set the project id')
 parser.add_argument(
     '--list-issues', action='store_true', help='list project issues')
@@ -136,8 +145,19 @@ def humanize_time(t: datetime) -> str:
         datetime.now(timezone.utc) - dateutil.parser.parse(t))
 
 
-if args.view_issue is not None and args.view_issue:
-    i = project.issues.get(args.view_issue)
+if args.issue and args.comment_issue:
+    i = project.issues.get(args.issue)
+    i.notes.create({'body': args.comment_issue})
+    print("Comment created")
+
+if args.issue and args.long_comment_issue:
+    message = retrieve_message()
+    i = project.issues.get(args.issue)
+    i.notes.create({'body': message})
+    print("Comment created")
+
+if args.issue and args.view_issue is not None and args.view_issue:
+    i = project.issues.get(args.issue)
 
     result = "# *{}* [ {} ]\n".format(i.title, i.state)
     result += "## metadata\n"
