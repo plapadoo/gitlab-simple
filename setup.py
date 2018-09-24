@@ -16,6 +16,14 @@ setup(
     author_email='info@plapadoo.de',
     license='BSD3',
     packages=find_packages(),
-    install_requires=['python-gitlab', 'pyxdg', 'terminaltables'],
+    install_requires=[
+        'python-gitlab',
+        'pyxdg',
+        'terminaltables',
+        'termcolor',
+        'humanize',
+        'python-dateutil',
+        'consolemd',
+    ],
     include_package_data=True,
     zip_safe=True)

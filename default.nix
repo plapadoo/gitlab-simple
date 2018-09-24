@@ -25,6 +25,32 @@ let
 
       propagatedBuildInputs = [ super.six super.requests ];
     };
+    commonmark = super.buildPythonPackage rec {
+      pname  = "commonmark";
+      version = "0.8.0";
+
+      src = self.fetchPypi {
+        sha256 = "1kqcqizd8cf61pbb6gcwp1kv6ghw9kzydw99awsmiqx08fy5r8wn";
+        inherit pname version;
+      };
+
+      doCheck = false;
+
+      propagatedBuildInputs = [ super.future ];
+    };
+    consolemd = super.buildPythonPackage rec {
+      pname  = "consolemd";
+      version = "0.4.3";
+
+      src = self.fetchPypi {
+        sha256 = "0mcggkyhnzxyalqljd4a5650x8phwnslvkpgbj04cbxcf5888cjz";
+        inherit pname version;
+      };
+
+      doCheck = false;
+
+      propagatedBuildInputs = [ super.pytestrunner super.click super.pygments self.commonmark super.setproctitle ];
+    };
   };
 
   python = pkgs.python3.override { inherit packageOverrides; };
@@ -43,7 +69,11 @@ in
     propagatedBuildInputs = [
       pythonPkgs.python-gitlab
       pythonPkgs.terminaltables
+      pythonPkgs.termcolor
+      pythonPkgs.humanize
+      pythonPkgs.python-dateutil
       pythonPkgs.pyxdg
+      pythonPkgs.consolemd
     ];
 
     doCheck = false;
