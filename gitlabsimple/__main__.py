@@ -28,12 +28,14 @@ def retrieve_message() -> str:
             check=True,
         )
         tf.seek(0)
-        return tf.read().decode('utf-8')
+        content: bytes = tf.read()
+        return content.decode('utf-8')
 
 
 parser = argparse.ArgumentParser(description='Simple gitlab interface')
 parser.add_argument(
     '--new-issue', type=str, help='create a new issue with a specific title')
+parser.add_argument('--project', type=int, help='set the project id')
 parser.add_argument(
     '--list-issues', action='store_true', help='list project issues')
 parser.add_argument(
@@ -69,7 +71,19 @@ gl = gitlab.Gitlab(
     private_token=config['token'],
 )
 
-project = gl.projects.get(config["project"])
+if "project" in config:
+    project = gl.projects.get(config["project"])
+elif "GITLAB_SIMPLE_PROJECT" in os.environ:
+    project = os.environ["GITLAB_SIMPLE_PROJECT"]
+else:
+    if not args.project:
+        print("Couldn't find a project in...\n\n" +
+              "- GITLAB_SIMPLE_PROJECT environment variable\n" +
+              "- the configuration file\n" +
+              "- via --project on the command line\n\n" + "exiting...")
+        sys.exit(1)
+    else:
+        project = args.project
 
 if args.latest_trace is not None and args.latest_trace:
     jobs = [j for j in project.jobs.list() if j.status == 'failed']
