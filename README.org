@@ -1,5 +1,7 @@
 * What’s this?
 
+[[./example.png]]
+
 This tool provides a really simple command line interface to common GitLab operations. Supported are:
 
  - List issues in a project (filter by assignee)
