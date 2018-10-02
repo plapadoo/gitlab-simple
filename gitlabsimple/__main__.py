@@ -116,7 +116,7 @@ def main():
             'title': args.new_issue,
         }
         if args.labels is not None:
-            d['labels'] = args.labels
+            d['labels'] = args.labels.split(",")
         if args.assign is not None:
             user = next((u.id for u in project.users.list()
                          if u.name == args.assign), None)
