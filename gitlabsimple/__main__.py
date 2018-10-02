@@ -72,131 +72,136 @@ parser.add_argument(
 
 parser.add_argument('--assign', type=str, help='assignee for the issue')
 
-args = parser.parse_args()
 
-config_path = Path(xdg_config_home) / "gitlab-simple" / "config.json"
-if not config_path.exists():
-    raise Exception('config file “' + str(config_path) + "” not found")
-config: Dict[str, Any] = {}
-with config_path.open() as f:
-    config = json.load(f)
+def main():
+    args = parser.parse_args()
 
-gl = gitlab.Gitlab(
-    config['server'],
-    private_token=config['token'],
-)
+    config_path = Path(xdg_config_home) / "gitlab-simple" / "config.json"
+    if not config_path.exists():
+        raise Exception('config file “' + str(config_path) + "” not found")
+    config: Dict[str, Any] = {}
+    with config_path.open() as f:
+        config = json.load(f)
 
-if "project" in config:
-    project = gl.projects.get(config["project"])
-elif "GITLAB_SIMPLE_PROJECT" in os.environ:
-    project = os.environ["GITLAB_SIMPLE_PROJECT"]
-else:
-    if not args.project:
+    gl = gitlab.Gitlab(
+        config['server'],
+        private_token=config['token'],
+    )
+
+    if args.project:
+        print("using project from command line")
+        project_id = args.project
+    elif "GITLAB_SIMPLE_PROJECT" in os.environ:
+        print("using project from envvar")
+        project_id = os.environ["GITLAB_SIMPLE_PROJECT"]
+    elif "project" in config:
+        print("using project from config")
+        project_id = gl.projects.get(config["project"])
+    else:
         print("Couldn't find a project in...\n\n" +
               "- GITLAB_SIMPLE_PROJECT environment variable\n" +
               "- the configuration file\n" +
               "- via --project on the command line\n\n" + "exiting...")
         sys.exit(1)
-    else:
-        project = args.project
 
-if args.latest_trace is not None and args.latest_trace:
-    jobs = [j for j in project.jobs.list() if j.status == 'failed']
-    jobs.sort(key=lambda x: x.id, reverse=True)
-    print(jobs[0].trace().decode('utf-8'))
+    project = gl.projects.get(project_id)
 
-if args.new_issue is not None:
-    d = {
-        'title': args.new_issue,
-    }
-    if args.labels is not None:
-        d['labels'] = args.labels
-    if args.assign is not None:
-        user = next((u.id for u in project.users.list()
-                     if u.name == args.assign), None)
-        d['assignee_id'] = user
-    if args.editor is not None and args.editor:
-        try:
-            message = retrieve_message()
-        except:
-            print("Abort, process error")
-            print_exc()
-            sys.exit(1)
-        if message == '':
-            print("Abort, empty message")
-            sys.exit(1)
-        else:
-            d['description'] = message
-    created = project.issues.create(d)
-    print("Created #" + str(created.iid))
+    if args.latest_trace is not None and args.latest_trace:
+        jobs = [j for j in project.jobs.list() if j.status == 'failed']
+        jobs.sort(key=lambda x: x.id, reverse=True)
+        print(jobs[0].trace().decode('utf-8'))
 
-if args.close_issues is not None:
-    issues = [a.strip() for a in args.close_issues.split(',')]
+    if args.new_issue is not None:
+        d = {
+            'title': args.new_issue,
+        }
+        if args.labels is not None:
+            d['labels'] = args.labels
+        if args.assign is not None:
+            user = next((u.id for u in project.users.list()
+                         if u.name == args.assign), None)
+            d['assignee_id'] = user
+        if args.editor is not None and args.editor:
+            try:
+                message = retrieve_message()
+            except:
+                print("Abort, process error")
+                print_exc()
+                sys.exit(1)
+            if message == '':
+                print("Abort, empty message")
+                sys.exit(1)
+            else:
+                d['description'] = message
+        created = project.issues.create(d)
+        print("Created #" + str(created.iid))
 
-    for issue in (project.issues.get(issue) for issue in issues):
-        issue.state_event = 'close'
-        issue.save()
+    if args.close_issues is not None:
+        issues = [a.strip() for a in args.close_issues.split(',')]
 
-    print("all closed")
+        for issue in (project.issues.get(issue) for issue in issues):
+            issue.state_event = 'close'
+            issue.save()
 
+        print("all closed")
 
-def humanize_time(t: datetime) -> str:
-    return humanize.naturaldelta(
-        datetime.now(timezone.utc) - dateutil.parser.parse(t))
+    def humanize_time(t: datetime) -> str:
+        return humanize.naturaldelta(
+            datetime.now(timezone.utc) - dateutil.parser.parse(t))
 
+    if args.issue and args.comment_issue:
+        i = project.issues.get(args.issue)
+        i.notes.create({'body': args.comment_issue})
+        print("Comment created")
 
-if args.issue and args.comment_issue:
-    i = project.issues.get(args.issue)
-    i.notes.create({'body': args.comment_issue})
-    print("Comment created")
+    if args.issue and args.long_comment_issue:
+        message = retrieve_message()
+        i = project.issues.get(args.issue)
+        i.notes.create({'body': message})
+        print("Comment created")
 
-if args.issue and args.long_comment_issue:
-    message = retrieve_message()
-    i = project.issues.get(args.issue)
-    i.notes.create({'body': message})
-    print("Comment created")
+    if args.issue and args.view_issue is not None and args.view_issue:
+        i = project.issues.get(args.issue)
 
-if args.issue and args.view_issue is not None and args.view_issue:
-    i = project.issues.get(args.issue)
+        result = "# *{}* [ {} ]\n".format(i.title, i.state)
+        result += "## metadata\n"
+        result += "by " + i.author['username'] + ", 🕑" + humanize_time(
+            i.created_at) + " ago\n"
+        if i.milestone is not None:
+            result += "milestone: " + i.milestone['title'] + "\n"
+        if i.assignees:
+            result += "assigned to: " + i.assignees[0]['username'] + "\n"
+        if i.labels:
+            result += "labels: " + " ".join(i.labels) + "\n"
+        result += "## description\n"
+        result += i.description + "\n"
+        comments = i.notes.list()
+        if comments:
+            result += "## comments\n"
+            for c in comments:
+                result += "### {} 🕑{} ago\n".format(
+                    c.author['username'], humanize_time(c.created_at))
+                result += c.body + "\n"
+        renderer = consolemd.Renderer(style_name='emacs')
+        renderer.render(result)
 
-    result = "# *{}* [ {} ]\n".format(i.title, i.state)
-    result += "## metadata\n"
-    result += "by " + i.author['username'] + ", 🕑" + humanize_time(
-        i.created_at) + " ago\n"
-    if i.milestone is not None:
-        result += "milestone: " + i.milestone['title'] + "\n"
-    if i.assignees:
-        result += "assigned to: " + i.assignees[0]['username'] + "\n"
-    if i.labels:
-        result += "labels: " + " ".join(i.labels) + "\n"
-    result += "## description\n"
-    result += i.description + "\n"
-    comments = i.notes.list()
-    if comments:
-        result += "## comments\n"
-        for c in comments:
-            result += "### {} 🕑{} ago\n".format(c.author['username'],
-                                                humanize_time(c.created_at))
-            result += c.body + "\n"
-    renderer = consolemd.Renderer(style_name='emacs')
-    renderer.render(result)
-
-if args.list_issues is not None and args.list_issues:
-    list_args = {
-        'state': 'opened',
-        'per_page': '100',
-    }
-    if args.assign is not None:
-        assignee_id: Optional[int] = next((u.id for u in project.users.list()
-                                           if u.name == args.assign), None)
-        if assignee_id is not None:
-            list_args['assignee_id'] = str(assignee_id)
-    if args.labels is not None:
-        list_args['labels'] = args.labels.split(',')
-    header = ["IID", "Title", "Tags"]
-    rows = [[
-        str(issue.iid),
-        issue.title,
-        '' if not issue.labels else ' '.join(issue.labels),
-    ] for issue in project.issues.list(**list_args)]
-    print(AsciiTable([header] + rows).table)
+    if args.list_issues is not None and args.list_issues:
+        list_args = {
+            'state': 'opened',
+            'per_page': '100',
+        }
+        if args.assign is not None:
+            assignee_id: Optional[int] = next((u.id
+                                               for u in project.users.list()
+                                               if u.name == args.assign), None)
+            if assignee_id is not None:
+                list_args['assignee_id'] = str(assignee_id)
+        if args.labels is not None:
+            list_args['labels'] = args.labels.split(',')
+        header = ["IID", "Title", "Tags"]
+        rows = [[
+            str(issue.iid),
+            issue.title,
+            '' if not issue.labels else ' '.join(issue.labels),
+        ] for issue in project.issues.list(**list_args)]
+        print(AsciiTable([header] + rows).table)
