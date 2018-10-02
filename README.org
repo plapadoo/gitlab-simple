@@ -1,0 +1,44 @@
+* What’s this?
+
+This tool provides a really simple command line interface to common GitLab operations. Supported are:
+
+ - List issues in a project (filter by assignee)
+ - Close issues
+ - Create new issues
+ - Assign issues
+ - Comment on issues
+
+* Installation
+
+The project has a standard Python project layout, so =python setup.py install= should work.
+
+If you’re using nix, =nix-build= works as well.
+
+* Configuration
+
+You need a so-called “Personal Access Token” for GitLab in order to use this tool. [[https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html][This page]] describes in detail how to get one (it’s pretty simple). Once you have it, create the file =~/.config/gitlab-simple/config.json= with the following content:
+
+#+BEGIN_SRC json
+{
+    "server": "https://gitlab.com",
+    "token": "your token here"
+}
+#+END_SRC
+
+If you’re self-hosting GitLab, feel free to change the URL accordingly. Also, if you have just one project you’re working on, you can specify it in the config file:
+
+#+BEGIN_SRC json
+{
+    "server": "https://gitlab.com",
+    "token": "your token here",
+    "project": "58"
+}
+#+END_SRC
+
+The project ID can be found by clicking on a project in the overview and then looking below the project’s avatar.
+
+* Usage
+
+If you don’t have a project specified in the configuration file, you have to pass the =--project= flag, specifying the project ID. You can also set the =GITLAB_SIMPLE_PROJECT= environment variable (which is pretty handy when combined with [[https://direnv.net/][direnv]]).
+
+The command line parmeters can be discovered using =--help= on the command line. I hope everything is self-explanatory, though.
