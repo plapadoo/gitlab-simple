@@ -84,6 +84,6 @@ in
       pythonPkgs.ipdb
       pythonPkgs.pylint
       pythonPkgs.mypy
-      pythonPkgs.yapf
+      pythonPkgs.black
     ];
   }
