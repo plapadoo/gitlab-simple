@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Iterable
 from traceback import print_exc
 from pathlib import Path
 import argparse
@@ -34,8 +34,9 @@ def retrieve_message() -> str:
 
 parser = argparse.ArgumentParser(description="Simple gitlab interface")
 parser.add_argument(
-    "--new-issue", type=str, help="create a new issue with a specific title"
+    "--new-issue", action="store_true", help="create a new issue with a specific title"
 )
+parser.add_argument("--title", type=str, help="title of the item to be edited/inserted")
 parser.add_argument("--version", action="store_true", help="display version info")
 parser.add_argument("--issue", type=int, help="issue ID (other commands refer to that)")
 parser.add_argument("--view-issue", action="store_true", help="view issue with id")
@@ -46,6 +47,9 @@ parser.add_argument(
     help="add a long comment to an issue (opens editor)",
 )
 parser.add_argument("--project", type=int, help="set the project id")
+parser.add_argument(
+    "--list-projects", action="store_true", help="list all accessible projects"
+)
 parser.add_argument("--list-issues", action="store_true", help="list project issues")
 parser.add_argument(
     "--close-issues", type=str, help="close a comma-separated list of issue iids"
@@ -70,10 +74,14 @@ def load_config() -> Dict[str, Any]:
     if not config_path.exists():
         raise Exception("config file “" + str(config_path) + "” not found")
     with config_path.open() as f:
-        return json.load(f)
+        return json.load(f)  # type: ignore
 
 
-# pylint: disable=too-many-locals, too-many-branches
+def print_table(header: List[str], rows: List[List[str]]) -> None:
+    print(AsciiTable([header] + rows).table)
+
+
+# pylint: disable=too-many-locals, too-many-branches, too-many-return-statements
 def main(cliargs: Optional[List[str]] = None) -> int:
     if cliargs is None:
         cliargs = sys.argv[1:]
@@ -87,6 +95,13 @@ def main(cliargs: Optional[List[str]] = None) -> int:
     config = load_config()
 
     gl = gitlab.Gitlab(config["server"], private_token=config["token"])
+
+    if args.list_projects:
+        list_args = {"per_page": "100"}
+        header = ["IID", "Name"]
+        rows = [[str(p.id), p.name] for p in gl.projects.list(**list_args)]
+        print_table(header, rows)
+        return 0
 
     if args.project:
         print("using project from command line")
@@ -114,8 +129,11 @@ def main(cliargs: Optional[List[str]] = None) -> int:
         jobs.sort(key=lambda x: x.id, reverse=True)
         print(jobs[0].trace().decode("utf-8"))
 
-    if args.new_issue is not None:
-        d = {"title": args.new_issue}
+    if args.new_issue:
+        if not args.title:
+            print("please supply a title using --title")
+            return 1
+        d = {"title": args.title}
         if args.labels is not None:
             d["labels"] = args.labels.split(",")
         if args.assign is not None:
