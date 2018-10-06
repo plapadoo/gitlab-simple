@@ -1,20 +1,19 @@
 #!/usr/bin/env python
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from traceback import print_exc
 from pathlib import Path
 import argparse
 import json
 from subprocess import run
-import sys
 import tempfile
 import os
 from datetime import datetime, timezone
+import sys
 import gitlab
 from xdg.BaseDirectory import xdg_config_home
 import dateutil.parser
 import humanize
-from termcolor import colored
 from terminaltables import AsciiTable
 import consolemd
 
@@ -65,12 +64,15 @@ parser.add_argument(
 
 parser.add_argument("--assign", type=str, help="assignee for the issue")
 
+# pylint: disable=too-many-locals, too-many-branches
+def main(cliargs: Optional[List[str]] = None) -> int:
+    if cliargs is None:
+        cliargs = sys.argv[1:]
 
-def main():
-    args = parser.parse_args()
+    args = parser.parse_args(cliargs)
 
     if args.version:
-        print("gitlab-simple -- 1.0")
+        print("gitlab-simple 1.1")
         return 0
 
     config_path = Path(xdg_config_home) / "gitlab-simple" / "config.json"
@@ -207,3 +209,9 @@ def main():
             for issue in project.issues.list(**list_args)
         ]
         print(AsciiTable([header] + rows).table)
+
+    return 0
+
+
+if __name__ == "__main__":
+    main()
