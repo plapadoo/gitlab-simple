@@ -111,7 +111,7 @@ def main(cliargs: Optional[List[str]] = None) -> int:
     gl = gitlab.Gitlab(config["server"], private_token=config["token"])
 
     if args.list_projects:
-        list_args = {"per_page": "100"}
+        list_args = {"all": True}
         header = ["IID", "Name"]
         rows = [[str(p.id), p.name] for p in gl.projects.list(**list_args)]
         print_table(header, rows)
@@ -246,7 +246,7 @@ def main(cliargs: Optional[List[str]] = None) -> int:
         renderer.render(result)
 
     if args.list_issues is not None and args.list_issues:
-        list_args = {"state": "opened", "per_page": "100"}
+        list_args = {"state": "opened", "all": True}
         if args.assign is not None:
             assignee_id: Optional[int] = next(
                 (u.id for u in project.users.list() if u.name == args.assign), None
