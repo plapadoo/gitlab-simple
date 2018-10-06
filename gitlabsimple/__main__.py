@@ -3,6 +3,7 @@
 from typing import Dict, Any, Optional, List, Iterable
 from traceback import print_exc
 from pathlib import Path
+from textwrap import wrap
 import argparse
 import json
 from subprocess import run
@@ -14,7 +15,7 @@ import gitlab
 from xdg.BaseDirectory import xdg_config_home
 import dateutil.parser
 import humanize
-from terminaltables import AsciiTable
+from terminaltables import SingleTable
 import consolemd
 
 
@@ -91,8 +92,16 @@ def load_config() -> Dict[str, Any]:
         return json.load(f)  # type: ignore
 
 
-def print_table(header: List[str], rows: List[List[str]]) -> None:
-    print(AsciiTable([header] + rows).table)
+def print_table(title: str, header: List[str], rows: List[List[str]]) -> None:
+    table = SingleTable([header] + rows)
+    max_width = table.column_max_width(1)
+    overhead = table.column_max_width(0)
+    if overhead < 0:
+        for row in table.table_data:
+            row[1] = "\n".join(wrap(row[1], width=max_width))
+    table.outer_border = False
+    table.title = title
+    print(table.table)
 
 
 # pylint: disable=too-many-locals, too-many-branches, too-many-return-statements
@@ -114,7 +123,7 @@ def main(cliargs: Optional[List[str]] = None) -> int:
         list_args = {"all": True}
         header = ["IID", "Name"]
         rows = [[str(p.id), p.name] for p in gl.projects.list(**list_args)]
-        print_table(header, rows)
+        print_table(str(len(rows)) + " project(s)", header, rows)
         return 0
 
     if args.project:
@@ -264,7 +273,7 @@ def main(cliargs: Optional[List[str]] = None) -> int:
             ]
             for issue in project.issues.list(**list_args)
         ]
-        print(AsciiTable([header] + rows).table)
+        print_table(str(len(rows)) + " issue(s)", header, rows)
 
     return 0
 
