@@ -83,6 +83,7 @@ in
       pythonPkgs.ipython
       pythonPkgs.ipdb
       pythonPkgs.pylint
+      pythonPkgs.pyflakes
       pythonPkgs.mypy
       pythonPkgs.black
     ];
