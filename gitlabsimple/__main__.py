@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from typing import Dict, Any, Optional, List, Iterable
+from typing import Dict, Any, Optional, List
 from traceback import print_exc
 from pathlib import Path
 from textwrap import fill
@@ -104,6 +104,10 @@ def print_table(title: str, header: List[str], rows: List[List[str]]) -> None:
     print(table.table)
 
 
+def find_user(project: Any, name: str) -> Optional[int]:
+    return next((u.id for u in project.users.list() if u.name == name), None)
+
+
 # pylint: disable=too-many-locals, too-many-branches, too-many-return-statements
 def main(cliargs: Optional[List[str]] = None) -> int:
     if cliargs is None:
@@ -165,6 +169,14 @@ def main(cliargs: Optional[List[str]] = None) -> int:
             if message is None:
                 return 1
             issue.description = message
+        if args.assign:
+            user = find_user(project, args.assign)
+            if user is None:
+                print('user "' + args.assign + '" not found')
+                return 1
+            issue.assignee_id = user
+        if args.labels:
+            issue.labels = args.labels.split(",")
         issue.save()
         print("Edited issue")
         return 0
@@ -174,14 +186,15 @@ def main(cliargs: Optional[List[str]] = None) -> int:
             print("please supply a title using --title")
             return 1
         d = {"title": args.title}
-        if args.labels is not None:
+        if args.labels:
             d["labels"] = args.labels.split(",")
-        if args.assign is not None:
-            user = next(
-                (u.id for u in project.users.list() if u.name == args.assign), None
-            )
+        if args.assign:
+            user = find_user(project, args.assign)
+            if user is None:
+                print('user "' + args.assign + '" not found')
+                return 1
             d["assignee_id"] = user
-        if args.editor is not None and args.editor:
+        if args.editor:
             message = retrieve_message()
             if message is None:
                 return 1
