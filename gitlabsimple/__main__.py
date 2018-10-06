@@ -18,27 +18,41 @@ from terminaltables import AsciiTable
 import consolemd
 
 
-def retrieve_message() -> str:
+def retrieve_message() -> Optional[str]:
     initial_message = ""
 
     EDITOR = os.environ.get("EDITOR", "vim")
 
-    with tempfile.NamedTemporaryFile(suffix=".tmp") as tf:
-        tf.write(initial_message.encode("utf-8"))
-        tf.flush()
-        run(EDITOR + " " + tf.name, shell=True, check=True)
-        tf.seek(0)
-        content: bytes = tf.read()
-        return content.decode("utf-8")
+    print("invoking editor " + EDITOR)
+
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".tmp") as tf:
+            tf.write(initial_message.encode("utf-8"))
+            tf.flush()
+            run(EDITOR + " " + tf.name, shell=True, check=True)
+            tf.seek(0)
+            content: bytes = tf.read()
+            result = content.decode("utf-8")
+            if result == "":
+                print("Abort, empty message")
+                return None
+            return result
+    except:
+        print("Abort, process error")
+        print_exc()
+        return None
 
 
 parser = argparse.ArgumentParser(description="Simple gitlab interface")
 parser.add_argument(
     "--new-issue", action="store_true", help="create a new issue with a specific title"
 )
+parser.add_argument(
+    "--edit-issue", action="store_true", help="edit an issue with an id"
+)
 parser.add_argument("--title", type=str, help="title of the item to be edited/inserted")
 parser.add_argument("--version", action="store_true", help="display version info")
-parser.add_argument("--issue", type=int, help="issue ID (other commands refer to that)")
+parser.add_argument("--iid", type=int, help="issue ID (other commands refer to that)")
 parser.add_argument("--view-issue", action="store_true", help="view issue with id")
 parser.add_argument("--comment-issue", type=str, help="add a short comment to an issue")
 parser.add_argument(
@@ -128,6 +142,23 @@ def main(cliargs: Optional[List[str]] = None) -> int:
         jobs = [j for j in project.jobs.list() if j.status == "failed"]
         jobs.sort(key=lambda x: x.id, reverse=True)
         print(jobs[0].trace().decode("utf-8"))
+        return 0
+
+    if args.edit_issue:
+        if not args.iid:
+            print("please specify an issue id")
+            return 1
+        issue = project.issues.get(args.iid)
+        if args.title:
+            issue.title = args.title
+        if args.editor:
+            message = retrieve_message()
+            if message is None:
+                return 1
+            issue.description = message
+        issue.save()
+        print("Edited issue")
+        return 0
 
     if args.new_issue:
         if not args.title:
@@ -142,14 +173,8 @@ def main(cliargs: Optional[List[str]] = None) -> int:
             )
             d["assignee_id"] = user
         if args.editor is not None and args.editor:
-            try:
-                message = retrieve_message()
-            except:
-                print("Abort, process error")
-                print_exc()
-                return 1
-            if message == "":
-                print("Abort, empty message")
+            message = retrieve_message()
+            if message is None:
                 return 1
             d["description"] = message
         created = project.issues.create(d)
@@ -169,19 +194,28 @@ def main(cliargs: Optional[List[str]] = None) -> int:
             datetime.now(timezone.utc) - dateutil.parser.parse(t)
         )
 
-    if args.issue and args.comment_issue:
-        i = project.issues.get(args.issue)
+    if args.comment_issue:
+        if not args.iid:
+            print("please specify an issue id")
+            return 1
+        i = project.issues.get(args.iid)
         i.notes.create({"body": args.comment_issue})
         print("Comment created")
 
-    if args.issue and args.long_comment_issue:
+    if args.long_comment_issue:
+        if not args.iid:
+            print("please specify an issue id")
+            return 1
         message = retrieve_message()
-        i = project.issues.get(args.issue)
+        if message is None:
+            return 1
+        i = project.issues.get(args.iid)
         i.notes.create({"body": message})
         print("Comment created")
+        return 0
 
-    if args.issue and args.view_issue is not None and args.view_issue:
-        i = project.issues.get(args.issue)
+    if args.iid and args.view_issue is not None and args.view_issue:
+        i = project.issues.get(args.iid)
 
         result = "# *{}* [ {} ]\n".format(i.title, i.state)
         result += "## metadata\n"
