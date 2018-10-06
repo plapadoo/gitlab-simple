@@ -7,6 +7,7 @@ This tool provides a really simple command line interface to common GitLab opera
  - List issues in a project (filter by assignee)
  - Close issues
  - Create new issues
+ - Edit issues
  - Assign issues
  - Comment on issues
 
@@ -37,7 +38,7 @@ If you’re self-hosting GitLab, feel free to change the URL accordingly. Also, 
 }
 #+END_SRC
 
-The project ID can be found by clicking on a project in the overview and then looking below the project’s avatar.
+The project ID can be found by clicking on a project in the overview and then looking below the project’s avatar, or by using =--list-projects=.
 
 * Usage
 
