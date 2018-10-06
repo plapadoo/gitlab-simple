@@ -3,7 +3,7 @@
 from typing import Dict, Any, Optional, List, Iterable
 from traceback import print_exc
 from pathlib import Path
-from textwrap import wrap
+from textwrap import fill
 import argparse
 import json
 from subprocess import run
@@ -98,7 +98,7 @@ def print_table(title: str, header: List[str], rows: List[List[str]]) -> None:
     overhead = table.column_max_width(0)
     if overhead < 0:
         for row in table.table_data:
-            row[1] = "\n".join(wrap(row[1], width=max_width))
+            row[1] = fill(row[1], width=max_width)
     table.outer_border = False
     table.title = title
     print(table.table)
