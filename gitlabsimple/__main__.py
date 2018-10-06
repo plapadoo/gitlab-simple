@@ -64,6 +64,15 @@ parser.add_argument(
 
 parser.add_argument("--assign", type=str, help="assignee for the issue")
 
+
+def load_config() -> Dict[str, Any]:
+    config_path = Path(xdg_config_home) / "gitlab-simple" / "config.json"
+    if not config_path.exists():
+        raise Exception("config file “" + str(config_path) + "” not found")
+    with config_path.open() as f:
+        return json.load(f)
+
+
 # pylint: disable=too-many-locals, too-many-branches
 def main(cliargs: Optional[List[str]] = None) -> int:
     if cliargs is None:
@@ -75,12 +84,7 @@ def main(cliargs: Optional[List[str]] = None) -> int:
         print("gitlab-simple 1.1")
         return 0
 
-    config_path = Path(xdg_config_home) / "gitlab-simple" / "config.json"
-    if not config_path.exists():
-        raise Exception("config file “" + str(config_path) + "” not found")
-    config: Dict[str, Any] = {}
-    with config_path.open() as f:
-        config = json.load(f)
+    config = load_config()
 
     gl = gitlab.Gitlab(config["server"], private_token=config["token"])
 
