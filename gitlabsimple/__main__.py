@@ -46,6 +46,12 @@ def retrieve_message() -> Optional[str]:
 
 parser = argparse.ArgumentParser(description="Simple gitlab interface")
 parser.add_argument(
+    "--new-snippet", action="store_true", help="create a new snippet (opens editor)"
+)
+parser.add_argument(
+    "--file-type", type=str, help="file type (for snippets, for example)"
+)
+parser.add_argument(
     "--new-issue", action="store_true", help="create a new issue with a specific title"
 )
 parser.add_argument(
@@ -116,7 +122,7 @@ def main(cliargs: Optional[List[str]] = None) -> int:
     args = parser.parse_args(cliargs)
 
     if args.version:
-        print("gitlab-simple 1.1")
+        print("gitlab-simple 1.2")
         return 0
 
     config = load_config()
@@ -128,6 +134,18 @@ def main(cliargs: Optional[List[str]] = None) -> int:
         header = ["IID", "Name"]
         rows = [[str(p.id), p.name] for p in gl.projects.list(**list_args)]
         print_table(str(len(rows)) + " project(s)", header, rows)
+        return 0
+
+    if args.new_snippet:
+        message = retrieve_message()
+        if message is None:
+            return 1
+        title = args.title if args.title else "insert title here"
+        file_type = args.file_type if args.file_type else "txt"
+        snippet = gl.snippets.create(
+            {"title": title, "file_name": "file." + file_type, "content": message}
+        )
+        print(snippet.web_url)
         return 0
 
     if args.project:
