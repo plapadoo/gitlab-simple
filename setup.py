@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="gitlab-simple",
-    version="1.2",
+    version="1.3",
     description="Simple GUI for managing GitLab projects",
     python_requires=">=3.6.1",
     classifiers=["Programming Language :: Python :: 3"],
