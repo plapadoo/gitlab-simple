@@ -5,7 +5,6 @@ setup(
     version="1.2",
     description="Simple GUI for managing GitLab projects",
     python_requires=">=3.6.1",
-    long_description="",
     classifiers=["Programming Language :: Python :: 3"],
     entry_points={"console_scripts": ["gitlabsimple=gitlabsimple.__main__:main"]},
     keywords="gitlab",

@@ -46,7 +46,12 @@ def retrieve_message() -> Optional[str]:
 
 parser = argparse.ArgumentParser(description="Simple gitlab interface")
 parser.add_argument(
-    "--new-snippet", action="store_true", help="create a new snippet (opens editor)"
+    "--new-snippet",
+    action="store_true",
+    help="create a new snippet (opens editor unless overridden)",
+)
+parser.add_argument(
+    "--from-stdin", action="store_true", help="read input from standard input"
 )
 parser.add_argument(
     "--file-type", type=str, help="file type (for snippets, for example)"
@@ -137,9 +142,12 @@ def main(cliargs: Optional[List[str]] = None) -> int:
         return 0
 
     if args.new_snippet:
-        message = retrieve_message()
-        if message is None:
-            return 1
+        if args.from_stdin:
+            message = sys.stdin.read()
+        else:
+            message = retrieve_message()
+            if message is None:
+                return 1
         title = args.title if args.title else "insert title here"
         file_type = args.file_type if args.file_type else "txt"
         snippet = gl.snippets.create(
