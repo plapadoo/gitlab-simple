@@ -10,6 +10,7 @@ This tool provides a really simple command line interface to common GitLab opera
  - Edit issues
  - Assign issues
  - Comment on issues
+ - Create new snippets
 
 * Installation
 
