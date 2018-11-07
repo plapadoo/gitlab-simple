@@ -62,7 +62,7 @@ in
   pythonPkgs.buildPythonApplication rec {
     name = "gitlab-simple";
 
-    version = "1.3";
+    version = "1.4";
 
     src = repoSrc;
 

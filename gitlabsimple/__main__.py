@@ -19,6 +19,10 @@ from terminaltables import SingleTable
 import consolemd
 
 
+def humanize_time(t: datetime) -> str:
+    return humanize.naturaldelta(datetime.now(timezone.utc) - dateutil.parser.parse(t))
+
+
 def retrieve_message() -> Optional[str]:
     initial_message = ""
 
@@ -62,7 +66,11 @@ parser.add_argument(
 parser.add_argument(
     "--edit-issue", action="store_true", help="edit an issue with an id"
 )
+parser.add_argument(
+    "--list-milestones", action="store_true", help="list all milestones"
+)
 parser.add_argument("--title", type=str, help="title of the item to be edited/inserted")
+parser.add_argument("--milestone", type=str, help="milestone to use/assign")
 parser.add_argument("--version", action="store_true", help="display version info")
 parser.add_argument("--iid", type=int, help="issue ID (other commands refer to that)")
 parser.add_argument("--view-issue", action="store_true", help="view issue with id")
@@ -103,13 +111,14 @@ def load_config() -> Dict[str, Any]:
         return json.load(f)  # type: ignore
 
 
-def print_table(title: str, header: List[str], rows: List[List[str]]) -> None:
+def print_table(
+    title: str, header: List[str], rows: List[List[str]], overhead_col: int
+) -> None:
     table = SingleTable([header] + rows)
-    max_width = table.column_max_width(1)
-    overhead = table.column_max_width(0)
-    if overhead < 0:
-        for row in table.table_data:
-            row[1] = fill(row[1], width=max_width)
+    for row in table.table_data:
+        row[overhead_col] = fill(
+            row[overhead_col], width=table.column_max_width(overhead_col)
+        )
     table.outer_border = False
     table.title = title
     print(table.table)
@@ -135,13 +144,14 @@ def main(cliargs: Optional[List[str]] = None) -> int:
     gl = gitlab.Gitlab(config["server"], private_token=config["token"])
 
     if args.list_projects:
-        list_args = {"all": True}
+        list_args: Dict[str, Any] = {"all": True}
         header = ["IID", "Name"]
         rows = [[str(p.id), p.name] for p in gl.projects.list(**list_args)]
-        print_table(str(len(rows)) + " project(s)", header, rows)
+        print_table(str(len(rows)) + " project(s)", header, rows, 1)
         return 0
 
     if args.new_snippet:
+        message: Optional[str]
         if args.from_stdin:
             message = sys.stdin.read()
         else:
@@ -177,7 +187,22 @@ def main(cliargs: Optional[List[str]] = None) -> int:
 
     project = gl.projects.get(project_id)
 
-    if args.latest_trace is not None and args.latest_trace:
+    if args.list_milestones:
+        print_table(
+            "Milestones",
+            ["ID", "State", "Title", "Due date", "Description"],
+            sorted(
+                [
+                    [ms.id, ms.state, ms.title, ms.due_date, ms.description]
+                    for ms in project.milestones.list(state="active")
+                ],
+                key=lambda x: x[3],
+            ),
+            4,
+        )
+        return 0
+
+    if args.latest_trace:
         jobs = [j for j in project.jobs.list() if j.status == "failed"]
         jobs.sort(key=lambda x: x.id, reverse=True)
         print(jobs[0].trace().decode("utf-8"))
@@ -212,6 +237,8 @@ def main(cliargs: Optional[List[str]] = None) -> int:
             print("please supply a title using --title")
             return 1
         d = {"title": args.title}
+        if args.milestone:
+            d["milestone"] = args.milestone
         if args.labels:
             d["labels"] = args.labels.split(",")
         if args.assign:
@@ -236,11 +263,6 @@ def main(cliargs: Optional[List[str]] = None) -> int:
             issue.save()
 
         print("all closed")
-
-    def humanize_time(t: datetime) -> str:
-        return humanize.naturaldelta(
-            datetime.now(timezone.utc) - dateutil.parser.parse(t)
-        )
 
     if args.comment_issue:
         if not args.iid:
@@ -312,7 +334,7 @@ def main(cliargs: Optional[List[str]] = None) -> int:
             ]
             for issue in project.issues.list(**list_args)
         ]
-        print_table(str(len(rows)) + " issue(s)", header, rows)
+        print_table(str(len(rows)) + " issue(s)", header, rows, 1)
 
     return 0
 
