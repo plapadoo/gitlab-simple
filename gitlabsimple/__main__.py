@@ -215,6 +215,8 @@ def main(cliargs: Optional[List[str]] = None) -> int:
         issue = project.issues.get(args.iid)
         if args.title:
             issue.title = args.title
+        if args.milestone:
+            issue.milestone_id = args.milestone
         if args.editor:
             message = retrieve_message()
             if message is None:
@@ -238,7 +240,7 @@ def main(cliargs: Optional[List[str]] = None) -> int:
             return 1
         d = {"title": args.title}
         if args.milestone:
-            d["milestone"] = args.milestone
+            d["milestone_id"] = args.milestone
         if args.labels:
             d["labels"] = args.labels.split(",")
         if args.assign:
